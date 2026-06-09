@@ -10,6 +10,9 @@ import { SessionService } from '../../core/session/session.service';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
 import { request } from 'undici';
 import { SpaceService } from '../../core/space/services/space.service';
+import { WorkspaceService } from '../../core/workspace/services/workspace.service';
+import { GroupUserRepo } from '@docmost/db/repos/group/group-user.repo';
+import { executeTx } from '@docmost/db/utils';
 
 @Injectable()
 export class HoidcService {
@@ -18,6 +21,8 @@ export class HoidcService {
     private readonly userRepo: UserRepo,
     private readonly sessionService: SessionService,
     private readonly spaceService: SpaceService,
+    private readonly workspaceService: WorkspaceService,
+    private readonly groupUserRepo: GroupUserRepo,
   ) {}
 
   /**
@@ -121,41 +126,59 @@ export class HoidcService {
       }
 
       // 直接插入，不走 insertUser（避免 hashPassword(undefined) 问题）
-      user = await this.db
-        .insertInto('users')
-        .values({
-          email: info.email.toLowerCase(),
-          name: info.name ?? info.email.split('@')[0].toLowerCase(),
-          avatarUrl: info.avatar ?? null,
+      user = await executeTx(this.db, async (trx) => {
+        const newUser = await trx
+          .insertInto('users')
+          .values({
+            email: info.email.toLowerCase(),
+            name: info.name ?? info.email.split('@')[0].toLowerCase(),
+            avatarUrl: info.avatar ?? null,
+            workspaceId,
+            role: 'member',
+            emailVerifiedAt: new Date(),
+            lastLoginAt: new Date(),
+            locale: 'en-US',
+          })
+          .returning([
+            'id',
+            'email',
+            'name',
+            'emailVerifiedAt',
+            'avatarUrl',
+            'role',
+            'workspaceId',
+            'locale',
+            'timezone',
+            'settings',
+            'lastLoginAt',
+            'lastActiveAt',
+            'deactivatedAt',
+            'createdAt',
+            'updatedAt',
+            'deletedAt',
+            'hasGeneratedPassword',
+            'invitedById',
+            'password',
+            'scimExternalId',
+          ])
+          .executeTakeFirst();
+
+        await this.workspaceService.addUserToWorkspace(
+          newUser.id,
           workspaceId,
-          role: 'member',
-          emailVerifiedAt: new Date(),
-          lastLoginAt: new Date(),
-          locale: 'en-US',
-        })
-        .returning([
-          'id',
-          'email',
-          'name',
-          'emailVerifiedAt',
-          'avatarUrl',
-          'role',
-          'workspaceId',
-          'locale',
-          'timezone',
-          'settings',
-          'lastLoginAt',
-          'lastActiveAt',
-          'deactivatedAt',
-          'createdAt',
-          'updatedAt',
-          'deletedAt',
-          'hasGeneratedPassword',
-          'invitedById',
-          'password',
-          'scimExternalId',
-        ])
-        .executeTakeFirst();
+          undefined,
+          trx,
+        );
+
+        return newUser;
+      });
+
+      // 加入 Everyone 组（在 ensurePersonalSpace 之前加入会导致 getUserSpaceIds 误判）
+      // 所以先创建个人空间，再加入组
+      await this.spaceService.ensurePersonalSpace(user, workspaceId);
+      await this.groupUserRepo.addUserToDefaultGroup(user.id, workspaceId);
+
+      return this.sessionService.createSessionAndToken(user);
     }
 
     await this.spaceService.ensurePersonalSpace(user, workspaceId);

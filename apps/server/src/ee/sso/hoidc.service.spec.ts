@@ -2,8 +2,8 @@ import { HoidcService } from './hoidc.service';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('HoidcService pure helpers', () => {
-  // 构造 service 时 4 个依赖全传 null（只测纯逻辑方法，不需要 DB/网络）
-  const svc = new HoidcService(null as any, null as any, null as any, null as any);
+  // 构造 service 时 6 个依赖全传 null（只测纯逻辑方法，不需要 DB/网络）
+  const svc = new HoidcService(null as any, null as any, null as any, null as any, null as any, null as any);
 
   describe('buildLoginUrl', () => {
     it('builds login url correctly', () => {
