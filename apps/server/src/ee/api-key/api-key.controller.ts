@@ -37,16 +37,21 @@ export class ApiKeyController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const ability = this.workspaceAbility.createForUser(user, workspace);
-    const canManage = ability.can(
-      WorkspaceCaslAction.Manage,
-      WorkspaceCaslSubject.Settings,
-    );
-
-    if (canManage) {
-      return this.apiKeyService.getWorkspaceApiKeys(workspace.id, pagination);
-    }
     return this.apiKeyService.getUserApiKeys(user.id, workspace.id, pagination);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('workspace')
+  async listWorkspaceApiKeys(
+    @Body() pagination: PaginationOptions,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const ability = this.workspaceAbility.createForUser(user, workspace);
+    if (ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.Settings)) {
+      throw new ForbiddenException();
+    }
+    return this.apiKeyService.getWorkspaceApiKeys(workspace.id, pagination);
   }
 
   @HttpCode(HttpStatus.OK)

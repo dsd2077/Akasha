@@ -73,7 +73,6 @@ const groupedData: DataGroup[] = [
         icon: IconKey,
         path: "/settings/account/api-keys",
         feature: Feature.API_KEYS,
-        role: "owner",
       },
     ],
   },
