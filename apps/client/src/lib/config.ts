@@ -71,12 +71,12 @@ export function getFileUrl(src: string) {
 }
 
 export function getFileUploadSizeLimit() {
-  const limit = getConfigValue("FILE_UPLOAD_SIZE_LIMIT", "50mb");
+  const limit = getConfigValue("FILE_UPLOAD_SIZE_LIMIT", "200mb");
   return bytes(limit);
 }
 
 export function getFileImportSizeLimit() {
-  const limit = getConfigValue("FILE_IMPORT_SIZE_LIMIT", "200mb");
+  const limit = getConfigValue("FILE_IMPORT_SIZE_LIMIT", "5gb");
   return bytes(limit);
 }
 
