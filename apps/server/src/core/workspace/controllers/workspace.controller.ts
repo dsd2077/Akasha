@@ -89,6 +89,9 @@ export class WorkspaceController {
     if (!features.includes(Feature.PDF_IMPORT)) {
       features.push(Feature.PDF_IMPORT);
     }
+    if (!features.includes(Feature.CONFLUENCE_IMPORT)) {
+      features.push(Feature.CONFLUENCE_IMPORT);
+    }
 
     return {
       cloud: this.environmentService.isCloud(),
